@@ -21,13 +21,13 @@ import emcee
 import corner
 
 
-def schechter_function(x, alpha, log_mstar, phistar):
+def schechter_function(x, alpha, log_mstar, log_phistar):
     """
     x is log(stellar mass) observed values.
     Output is y, where y is linear SMF.
     """
 
-    y = np.log(10) * phistar * np.exp( -10**( x - log_mstar)) * ( 10**( x - log_mstar) )**(alpha + 1)
+    y = np.log(10) * (10**log_phistar) * np.exp( -10**( x - log_mstar)) * ( 10**( x - log_mstar) )**(alpha + 1)
 
     return y
 
@@ -139,22 +139,22 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
 
     # --- Step 2: Robust Initial Guess ---
     try:
-        popt, pcov = curve_fit(schechter_function, x - xp, y, p0=[-2.0, 10.6, 10**(-6.5)])
+        popt, pcov = curve_fit(schechter_function, x - xp, y, p0=[-2.0, 10.6, -6.5])
         guess_alpha, guess_mstar, guess_phistar = popt
         print(f"Guesses: alpha = {guess_alpha:.3f}, M_star = {guess_mstar:.3f}, phi_star = {guess_phistar:.3f}")
     
     except np.linalg.LinAlgError:
-        guess_alpha, guess_log_mstar, guess_phistar = -2.0, 10.6, 10**(-6.5) # just rough values from Tom's work, these are z dependent
+        guess_alpha, guess_log_mstar, guess_phistar = -2.0, 10.6, -6.5 # just rough values from Tom's work, these are z dependent
 
     # guess_std = np.std(y - gaussian_function(x-xp, guess_sig, guess_mu, guess_amp))
 
     # --- Step 3: MCMC Functions (3 parameters: m, c, sigma_int) ---
     def log_likelihood(theta, x, y, xerr_lo, xerr_hi, yerr_lo, yerr_hi, xp):
-        alpha, log_mstar, phistar = theta
+        alpha, log_mstar, log_phistar = theta
         # if sigma_int <= 0: this was one of the params
         #    return -np.inf
 
-        model = schechter_function(x, alpha, log_mstar, phistar)
+        model = schechter_function(x, alpha, log_mstar, log_phistar)
         delta = model - y  # positive => model above data
 
         y_err = np.where(delta >= 0, yerr_hi, yerr_lo)
@@ -170,14 +170,14 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
     # Set prior limits safely outside empirical distribution boundaries, from Harvey2025
     min_alpha, max_alpha = -3.5, -1.0
     min_mstar, max_mstar = 8.0, 12.5
-    min_phistar, max_phistar = 10**(-8), 10**(-2)
+    min_phistar, max_phistar = -8, -2
 
     def log_prior(theta): 
         """
         Uses flat uniform prior.
         """
-        alpha, log_mstar, phistar = theta
-        if min_alpha < alpha < max_alpha and min_mstar < log_mstar < max_mstar and min_phistar < phistar < max_phistar:
+        alpha, log_mstar, log_phistar = theta
+        if min_alpha < alpha < max_alpha and min_mstar < log_mstar < max_mstar and min_phistar < log_phistar < max_phistar:
             return 0 # This is return 0 for flat uniform prior
         return -np.inf
 
@@ -284,5 +284,5 @@ def plotting(results, ax):
     smf = schechter_function((x_range - x_pivot), alpha_med, mstar_med, phistar_med)
     log_smf = np.log10(smf)
 
-    ax.fill_between(x_range, lower_bound, upper_bound, color="royalblue", alpha=0.3, label=r"1$\sigma$ Confidence")
-    ax.plot(x_range, schechter_function((x_range - x_pivot), alpha_med, mstar_med, phistar_med), color="darkblue", lw=2, label="Median Schechter Fit")
+    ax.fill_between(x_range, log_lower_bound, log_upper_bound, color="royalblue", alpha=0.3, label=r"1$\sigma$ Confidence")
+    ax.plot(x_range, log_smf, color="darkblue", lw=2, label="Median Schechter Fit")
