@@ -110,7 +110,8 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
     # My basic version of _parse_err function 
 
     xp = 0.0 if x_pivot is None else x_pivot
-    
+
+    """
     mask = (
         np.isfinite(x) & np.isfinite(y)
         & np.isfinite(xe_lo) & np.isfinite(xe_hi)
@@ -125,7 +126,9 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
     xe_lo, xe_hi = xe_lo[mask], xe_hi[mask]
     ye_lo, ye_hi = ye_lo[mask], ye_hi[mask]
     n = len(x)
+    """
 
+    
     # Guard against zero/negative error entries (keeps likelihood well-defined)
     xe_lo = np.where(xe_lo <= 0, 1e-10, xe_lo)
     xe_hi = np.where(xe_hi <= 0, 1e-10, xe_hi)
