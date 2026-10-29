@@ -24,12 +24,12 @@ import corner
 def schechter_function(x, alpha, mstar, phistar):
     """
     x is log(stellar mass) observed values.
-    Output is log10(y), where y is SMF.
+    Output is y, where y is linear SMF.
     """
 
     y = np.log(10) * phistar * np.exp( -10**( x - np.log10(mstar)) ) * ( 10**( x - np.log10(mstar)) )**(alpha + 1)
 
-    return np.log10(y)
+    return y
 
 
 def _parse_err(err, n):
@@ -117,7 +117,11 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
         & np.isfinite(ye_lo) & np.isfinite(ye_hi)
     )
 
-    x, y = x[mask], y[mask]
+    print("mask: ", mask)
+    print("shape of mask: ", np.shape(mask))
+
+    x = x[mask]
+    y = y[mask]
     xe_lo, xe_hi = xe_lo[mask], xe_hi[mask]
     ye_lo, ye_hi = ye_lo[mask], ye_hi[mask]
     n = len(x)
@@ -276,6 +280,12 @@ def plotting(results, ax):
     upper_bound = results["upper_bound"]
     x_pivot = results["x_pivot"]
     x_range = results["x_range"]
+
+    log_lower_bound = np.log10(lower_bound)
+    log_upper_bound = np.log10(upper_bound)
+    
+    smf = schechter_function((x_range - x_pivot), alpha_med, mstar_med, phistar_med)
+    log_smf = np.log10(smf)
 
     ax.fill_between(x_range, lower_bound, upper_bound, color="royalblue", alpha=0.3, label=r"1$\sigma$ Confidence")
     ax.plot(x_range, schechter_function((x_range - x_pivot), alpha_med, mstar_med, phistar_med), color="darkblue", lw=2, label="Median Schechter Fit")
