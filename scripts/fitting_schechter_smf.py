@@ -21,13 +21,13 @@ import emcee
 import corner
 
 
-def schechter_function(x, alpha, mstar, phistar):
+def schechter_function(x, alpha, log_mstar, phistar):
     """
     x is log(stellar mass) observed values.
     Output is y, where y is linear SMF.
     """
 
-    y = np.log(10) * phistar * np.exp( -10**( x - np.log10(mstar)) ) * ( 10**( x - np.log10(mstar)) )**(alpha + 1)
+    y = np.log(10) * phistar * np.exp( -10**( x - log_mstar)) ) * ( 10**( x - log_mstar)) )**(alpha + 1)
 
     return y
 
@@ -111,7 +111,6 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
 
     xp = 0.0 if x_pivot is None else x_pivot
 
-    """
     mask = (
         np.isfinite(x) & np.isfinite(y)
         & np.isfinite(xe_lo) & np.isfinite(xe_hi)
@@ -126,8 +125,7 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
     xe_lo, xe_hi = xe_lo[mask], xe_hi[mask]
     ye_lo, ye_hi = ye_lo[mask], ye_hi[mask]
     n = len(x)
-    """
-
+    
     
     # Guard against zero/negative error entries (keeps likelihood well-defined)
     xe_lo = np.where(xe_lo <= 0, 1e-10, xe_lo)
@@ -135,32 +133,28 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
     ye_lo = np.where(ye_lo <= 0, 1e-10, ye_lo)
     ye_hi = np.where(ye_hi <= 0, 1e-10, ye_hi)
 
-    #print(xe_lo)
-    #print(xe_hi)
-    #print(ye_lo)
-    #print(ye_hi)
 
     if len(x) < 2:
         raise ValueError("Not enough finite data points.")
 
     # --- Step 2: Robust Initial Guess ---
     try:
-        popt, pcov = curve_fit(schechter_function, x - xp, y)
+        popt, pcov = curve_fit(schechter_function, x - xp, y, p0=[-2.0, 10.6, 10**(-6.5)])
         guess_alpha, guess_mstar, guess_phistar = popt
         print(f"Guesses: alpha = {guess_alpha:.3f}, M_star = {guess_mstar:.3f}, phi_star = {guess_phistar:.3f}")
     
     except np.linalg.LinAlgError:
-        guess_alpha, guess_mstar, guess_phistar = -2.0, 10.6, 10**(-6.5) # just rough values from Tom's work, these are z dependent
+        guess_alpha, guess_log_mstar, guess_phistar = -2.0, 10.6, 10**(-6.5) # just rough values from Tom's work, these are z dependent
 
     # guess_std = np.std(y - gaussian_function(x-xp, guess_sig, guess_mu, guess_amp))
 
     # --- Step 3: MCMC Functions (3 parameters: m, c, sigma_int) ---
     def log_likelihood(theta, x, y, xerr_lo, xerr_hi, yerr_lo, yerr_hi, xp):
-        alpha, mstar, phistar = theta
+        alpha, log_mstar, phistar = theta
         # if sigma_int <= 0: this was one of the params
         #    return -np.inf
 
-        model = schechter_function(x, alpha, mstar, phistar)
+        model = schechter_function(x, alpha, log_mstar, phistar)
         delta = model - y  # positive => model above data
 
         y_err = np.where(delta >= 0, yerr_hi, yerr_lo)
@@ -175,15 +169,15 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
 
     # Set prior limits safely outside empirical distribution boundaries, from Harvey2025
     min_alpha, max_alpha = -3.5, -1.0
-    min_mstar, max_mstar = 10**8.0, 10**12.5
+    min_mstar, max_mstar = 8.0, 12.5
     min_phistar, max_phistar = 10**(-8), 10**(-2)
 
     def log_prior(theta): 
         """
         Uses flat uniform prior.
         """
-        alpha, mstar, phistar = theta
-        if min_alpha < alpha < max_alpha and min_mstar < mstar < max_mstar and min_phistar < phistar < max_phistar:
+        alpha, log_mstar, phistar = theta
+        if min_alpha < alpha < max_alpha and min_mstar < log_mstar < max_mstar and min_phistar < phistar < max_phistar:
             return 0 # This is return 0 for flat uniform prior
         return -np.inf
 
@@ -197,7 +191,7 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
     # --- Step 4: Run MCMC ---
     ndim = 3
     # initial = np.array([guess_sig, guess_mu, guess_amp if guess_std > 0 else 0.1]) old
-    initial = np.array([guess_alpha, guess_mstar, guess_phistar])
+    initial = np.array([guess_alpha, guess_log_mstar, guess_phistar])
     pos = initial + 1e-4 * np.random.randn(n_walkers, ndim)
 
     sampler = emcee.EnsembleSampler(
