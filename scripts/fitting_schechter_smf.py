@@ -169,8 +169,8 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
 
     # Set prior limits safely outside empirical distribution boundaries, from Harvey2025
     min_alpha, max_alpha = -3.5, -1.0
-    min_mstar, max_mstar = 8.0, 12.5
-    min_phistar, max_phistar = -8, -2
+    min_mstar, max_mstar = 7.0, 12.5
+    min_phistar, max_phistar = -10, -2
 
     def log_prior(theta): 
         """
