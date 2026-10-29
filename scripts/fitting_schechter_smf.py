@@ -27,7 +27,7 @@ def schechter_function(x, alpha, log_mstar, phistar):
     Output is y, where y is linear SMF.
     """
 
-    y = np.log(10) * phistar * np.exp( -10**( x - log_mstar)) ) * ( 10**( x - log_mstar)) )**(alpha + 1)
+    y = np.log(10) * phistar * np.exp( -10**( x - log_mstar)) * ( 10**( x - log_mstar) )**(alpha + 1)
 
     return y
 
@@ -191,7 +191,7 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
     # --- Step 4: Run MCMC ---
     ndim = 3
     # initial = np.array([guess_sig, guess_mu, guess_amp if guess_std > 0 else 0.1]) old
-    initial = np.array([guess_alpha, guess_log_mstar, guess_phistar])
+    initial = np.array([guess_alpha, guess_mstar, guess_phistar])
     pos = initial + 1e-4 * np.random.randn(n_walkers, ndim)
 
     sampler = emcee.EnsembleSampler(
