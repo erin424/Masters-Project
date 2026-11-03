@@ -101,6 +101,52 @@ def weighted_reduced_chi_squared(y_obs, y_err_low, y_err_high, y_model, n_params
     return chi2_red
 
 
+def format_value_uncertainty(value, upper_err, lower_err):
+    """
+    Format a value with asymmetric uncertainties using standard
+    significant-figure rules (PDG rounding: 1 sig fig, or 2 if the
+    leading digit is 1 or 2).
+
+    Parameters
+    ----------
+    value : float
+        Central value.
+    upper_err : float
+        +1 sigma uncertainty.
+    lower_err : float
+        -1 sigma uncertainty.
+
+    Returns
+    -------
+    value_str, upper_str, lower_str : str
+        Formatted value and uncertainties, all rounded to a consistent
+        number of decimal places.
+    """
+
+    if upper_err == 0 and lower_err == 0:
+        return f"{value:.3f}", "0", "0"
+
+    def get_decimals(err):
+        if err == 0:
+            return 0
+        exponent = math.floor(math.log10(abs(err)))
+        first_digit = int(abs(err) / 10**exponent)
+        sig_figs = 2 if first_digit in [1, 2] else 1
+        return -(exponent - (sig_figs - 1))
+
+    # decide precision using whichever error needs more decimal places,
+    # so neither error gets rounded away to zero
+    decimals = max(get_decimals(upper_err), get_decimals(lower_err))
+
+    value_rounded = round(value, decimals)
+    upper_rounded = round(upper_err, decimals)
+    lower_rounded = round(lower_err, decimals)
+
+    fmt = f"{{:.{max(decimals, 0)}f}}"
+
+    return fmt.format(value_rounded), fmt.format(upper_rounded), fmt.format(lower_rounded)
+
+
 def schechter_function(x, alpha, log_mstar, log_phistar):
     """
     x is log(stellar mass) observed values.
@@ -217,13 +263,26 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
         raise ValueError("Not enough finite data points.")
 
     # --- Step 2: Robust Initial Guess ---
+
+    # Prior limitsn from Harvey 2025
+    min_alpha, max_alpha = -3.5, -1.0
+    min_mstar, max_mstar = 7.0, 12.5 # ---- changed
+    min_phistar, max_phistar = -10, -2 # ---- changed
+
     try:
         popt, pcov = curve_fit(schechter_function, x - xp, y, p0=[-2.0, 10.6, -6.5])
         guess_alpha, guess_mstar, guess_phistar = popt
         print(f"Guesses: alpha = {guess_alpha:.3f}, M_star = {guess_mstar:.3f}, phi_star = {guess_phistar:.3f}")
     
     except np.linalg.LinAlgError:
-        guess_alpha, guess_log_mstar, guess_phistar = -2.0, 10, -4.5 # just rough values from Tom's work, these are z dependent
+        guess_alpha, guess_mstar, guess_phistar = -2.0, 10, -4.5 # just rough values from Tom's work, these are z dependent
+
+    if (min_alpha > guess_alpha) or (guess_alpha > max_alpha):
+        guess_alpha = -2.0
+    if (min_mstar > guess_mstar) or (guess_mstar > max_mstar):
+        guess_mstar = 10
+    if (min_phistar > guess_phistar) or (guess_phistar > max_phistar):
+        guess_phistar = -4.5
 
     # guess_std = np.std(y - gaussian_function(x-xp, guess_sig, guess_mu, guess_amp))
 
@@ -245,11 +304,6 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
         # ln_L = - (n/2) * np.log(2*np.pi) - n * np.log(sig) - 0.5 * np.sum( ((delta - mu)  / sig)**2)
 
         return ln_L
-
-    # Set prior limits safely outside empirical distribution boundaries, from Harvey2025
-    min_alpha, max_alpha = -3.5, -1.0
-    min_mstar, max_mstar = 7.0, 12.5 # ------------------------- changed
-    min_phistar, max_phistar = -10, -2 # ------------------------- changed
 
     def log_prior(theta): 
         """
@@ -312,7 +366,7 @@ def fit_smf_mcmc(x_in, y_in, x_err=None, y_err=None, x_pivot=None,
         plt.show()
         """
 
-        labels = [r"alpha $\alpha$", r"$M_\star$", r"$\phi_\star$"]
+        labels = [r"alpha $\alpha$", r"$\log_{10}(M_\star)$", r"$\log_{10}(\phi_\star)$"]
         corner.corner(flat_samples, labels=labels, truths=[alpha_med, mstar_med, phistar_med], show_titles=True)
         plt.show()
 
@@ -375,4 +429,4 @@ def plotting(results, ax):
     ax.plot(x_range, med_bound, color="darkblue", lw=2, label="Median Schechter Fit")
 
     y_model = schechter_function((x_range - x_pivot), alpha_med, mstar_med, phistar_med)
-    ax.plot(x_range, y_model, color="lime", lw=2, label="Dummy")
+    # ax.plot(x_range, y_model, color="lime", lw=2, label="Dummy")
