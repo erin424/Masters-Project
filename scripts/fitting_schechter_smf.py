@@ -22,7 +22,7 @@ import emcee
 import corner
 import math
 
-PLOT_PATH = "/raid/scratch/work/alberttg/Masters_project/Plots/Schechter_corner_plots"
+PLOT_PATH = "/nvme/scratch/work/econnick/plots/Schechter_corner_plots"
 
 
 def weighted_reduced_chi_squared(y_obs, y_err_low, y_err_high, y_model, n_params,
