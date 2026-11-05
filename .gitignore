@@ -1,2 +1,4 @@
 .venv/*
 .vscode-server/*
+.data_products/*
+data_inputs/*
