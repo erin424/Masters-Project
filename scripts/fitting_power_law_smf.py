@@ -269,8 +269,8 @@ def fit_smf_mcmc_power(corner_path, x_in, y_in, x_err=None, y_err=None, x_pivot=
 
     # Prior limitsn from Harvey 2025
     min_alpha, max_alpha = -3.5, -1.0
-    min_mstar, max_mstar = 7.0, 12.5 # ---- changed
-    min_phistar, max_phistar = -10, -2 # ---- changed
+    min_mstar, max_mstar = 7.5, 12.0 # ---- changed
+    min_phistar, max_phistar = -10.0, -2.0 # ---- changed
 
     try:
         popt, pcov = curve_fit(power_law, x - xp, y, p0=[-2.0, 10.6, -6.5])
@@ -378,11 +378,7 @@ def fit_smf_mcmc_power(corner_path, x_in, y_in, x_err=None, y_err=None, x_pivot=
     
     # discrete_y_model = med_bound[x_range]
 
-    red_chi2 = weighted_reduced_chi_squared(y_obs=y, y_err_low=ye_lo, y_err_high=ye_hi, 
-                                            y_model=discrete_y_model, n_params=ndim,
-                                            x_obs=x) # this will go wrong if there are xerrs
 
-    print(rf"Reduced chi squared = {red_chi2:.3f}")
 
     results = {
         "alpha_median": alpha_med,
@@ -399,7 +395,7 @@ def fit_smf_mcmc_power(corner_path, x_in, y_in, x_err=None, y_err=None, x_pivot=
         "phistar_84": np.percentile(flat_samples[:, 2], 84),
         "x_range": x_range,
         "x_pivot": xp,
-        "red_chi2": red_chi2,
+
     }
 
     return results
